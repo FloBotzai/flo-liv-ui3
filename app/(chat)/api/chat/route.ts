@@ -1,12 +1,10 @@
+import OpenAI from 'openai';
 import {
   UIMessage,
   appendResponseMessages,
   createDataStreamResponse,
-  smoothStream,
-  streamText,
 } from 'ai';
 import { auth } from '@/app/(auth)/auth';
-import { systemPrompt } from '@/lib/ai/prompts';
 import {
   deleteChatById,
   getChatById,
@@ -19,12 +17,10 @@ import {
   getTrailingMessageId,
 } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
-import { getWeather } from '@/lib/ai/tools/get-weather';
-import { isProductionEnvironment } from '@/lib/constants';
-import { myProvider } from '@/lib/ai/providers';
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export const maxDuration = 60;
 
@@ -80,87 +76,56 @@ export async function POST(request: Request) {
     });
 
     return createDataStreamResponse({
-      execute: (dataStream) => {
-        const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel }),
-          messages,
-          maxSteps: 5,
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
-                ],
-          experimental_transform: smoothStream({ chunking: 'word' }),
-          experimental_generateMessageId: generateUUID,
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
-          onFinish: async ({ response }) => {
-            if (session.user?.id) {
-              try {
-                const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === 'assistant',
-                  ),
-                });
+      execute: async (dataStream) => {
+        try {
+          const thread = await openai.beta.threads.create();
 
-                if (!assistantId) {
-                  throw new Error('No assistant message found!');
-                }
+          const runStream = await openai.beta.threads.createAndRun({
+            thread_id: thread.id,
+            assistant_id: 'asst_FLYPSgOOB3IEUTgUsa4j3a75',
+            stream: true,
+            instructions: 'You are FloBotz Assistant. Respond clearly, with helpful and brand-consistent answers.',
+          });
 
-                const [, assistantMessage] = appendResponseMessages({
-                  messages: [userMessage],
-                  responseMessages: response.messages,
-                });
+          let fullMessage = '';
+          let assistantMessageId = generateUUID();
 
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId: id,
-                      role: assistantMessage.role,
-                      parts: assistantMessage.parts,
-                      attachments:
-                        assistantMessage.experimental_attachments ?? [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-              } catch (_) {
-                console.error('Failed to save chat');
-              }
+          for await (const chunk of runStream) {
+            const content = chunk?.data?.delta?.content;
+            if (content) {
+              dataStream.append({
+                type: 'text',
+                content,
+              });
+              fullMessage += content;
             }
-          },
-          experimental_telemetry: {
-            isEnabled: isProductionEnvironment,
-            functionId: 'stream-text',
-          },
-        });
+          }
 
-        result.consumeStream();
-
-        result.mergeIntoDataStream(dataStream, {
-          sendReasoning: true,
-        });
+          // Save the assistant message
+          await saveMessages({
+            messages: [
+              {
+                id: assistantMessageId,
+                chatId: id,
+                role: 'assistant',
+                parts: [{ type: 'text', text: fullMessage }],
+                createdAt: new Date(),
+              },
+            ],
+          });
+        } catch (err) {
+          console.error('Streaming error:', err);
+          dataStream.append({ type: 'text', content: '⚠️ An error occurred while generating a response.' });
+        }
       },
       onError: () => {
-        return 'Oops, an error occured!';
+        return 'Oops, an error occurred!';
       },
     });
   } catch (error) {
+    console.error('POST /api/chat error:', error);
     return new Response('An error occurred while processing your request!', {
-      status: 404,
+      status: 500,
     });
   }
 }
