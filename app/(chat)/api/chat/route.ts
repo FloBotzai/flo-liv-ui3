@@ -105,7 +105,7 @@ export async function POST(request: Request) {
             ],
           });
 
-          // 🧠 Send message to n8n webhook
+          // 🧠 Send to n8n webhook
           await fetch('https://flobotzai.app.n8n.cloud/webhook/flo-chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -167,3 +167,4 @@ export async function DELETE(request: Request) {
     });
   }
 }
+
