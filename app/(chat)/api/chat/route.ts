@@ -74,7 +74,7 @@ export async function POST(request: Request) {
 
           const runStream = await openai.beta.threads.createAndRun({
             thread_id: thread.id,
-            assistant_id: 'asst_FLYPSgOOB3IEUTgUsa4j3a75', // FloBotz Assistant ID
+            assistant_id: 'asst_FLYPSgOOB3IEUTgUsa4j3a75',
             stream: true,
             instructions: 'You are FloBotz Assistant. Respond clearly, with helpful and brand-consistent answers.',
           });
@@ -104,6 +104,18 @@ export async function POST(request: Request) {
               },
             ],
           });
+
+          // 🧠 Send message to n8n webhook
+          await fetch('https://flobotzai.app.n8n.cloud/webhook/flo-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chatId: id,
+              userId: session.user.id,
+              message: fullMessage,
+            }),
+          });
+
         } catch (err) {
           console.error('Streaming error:', err);
           dataStream.append({
