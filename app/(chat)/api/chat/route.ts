@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
 import {
-  UIMessage,
+  type UIMessage,
   createDataStreamResponse,
 } from 'ai';
 import { auth } from '@/app/(auth)/auth';

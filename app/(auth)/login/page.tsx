@@ -2,47 +2,52 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { supabase } from '@/lib/supabase/client';
 import { toast } from '@/components/toast';
 
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 
-import { login, type LoginActionState } from '../actions';
-
 export default function Page() {
   const router = useRouter();
-
   const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isSuccessful, setIsSuccessful] = useState(false);
 
-  const [state, formAction] = useActionState<LoginActionState, FormData>(
-    login,
-    {
-      status: 'idle',
-    },
-  );
+  const handleSubmit = async (formData: FormData) => {
+    try {
+      setIsLoading(true);
+      const email = formData.get('email') as string;
+      const password = formData.get('password') as string;
+      setEmail(email);
 
-  useEffect(() => {
-    if (state.status === 'failed') {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          type: 'error',
+          description: 'Invalid email or password',
+        });
+        return;
+      }
+
+      if (data?.user) {
+        setIsSuccessful(true);
+        router.push('/');
+        router.refresh();
+      }
+    } catch (error) {
       toast({
         type: 'error',
-        description: 'Invalid credentials!',
+        description: 'An unexpected error occurred!',
       });
-    } else if (state.status === 'invalid_data') {
-      toast({
-        type: 'error',
-        description: 'Failed validating your submission!',
-      });
-    } else if (state.status === 'success') {
-      setIsSuccessful(true);
-      router.refresh();
+    } finally {
+      setIsLoading(false);
     }
-  }, [state.status]);
-
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get('email') as string);
-    formAction(formData);
   };
 
   return (
@@ -55,7 +60,7 @@ export default function Page() {
           </p>
         </div>
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
+          <SubmitButton isSuccessful={isSuccessful} isLoading={isLoading}>Sign in</SubmitButton>
           <p className="text-center text-sm text-gray-600 mt-4 dark:text-zinc-400">
             {"Don't have an account? "}
             <Link

@@ -9,17 +9,21 @@ import {
 } from '../schema';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { inArray } from 'drizzle-orm';
-import { appendResponseMessages, UIMessage } from 'ai';
+import { appendResponseMessages, type UIMessage } from 'ai';
 
 config({
   path: '.env.local',
 });
 
-if (!process.env.POSTGRES_URL) {
-  throw new Error('POSTGRES_URL environment variable is not set');
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable is not set');
 }
 
-const client = postgres(process.env.POSTGRES_URL);
+// Construct the connection string from Supabase URL
+const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const connectionString = `postgres://postgres:${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}@${supabaseUrl.hostname}:5432/postgres`;
+
+const client = postgres(connectionString);
 const db = drizzle(client);
 
 const BATCH_SIZE = 50; // Process 10 chats at a time
