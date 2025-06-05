@@ -6,7 +6,9 @@
     "prettier",
     "plugin:tailwindcss/recommended"
   ],
-  "plugins": ["tailwindcss"],
+  "plugins": [
+    "tailwindcss"
+  ],
   "rules": {
     "tailwindcss/no-custom-classname": "off",
     "tailwindcss/classnames-order": "off"
@@ -14,9 +16,23 @@
   "settings": {
     "import/resolver": {
       "typescript": {
-        "alwaysTryTypes": true
+        "alwaysTryTypes": true,
+        "project": "./tsconfig.json"
+      },
+      "node": {
+        "extensions": [
+          ".js",
+          ".jsx",
+          ".ts",
+          ".tsx"
+        ],
+        "paths": [
+          "./"
+        ]
       }
     }
   },
-  "ignorePatterns": ["**/components/ui/**"]
+  "ignorePatterns": [
+    "**/components/ui/**"
+  ]
 }

@@ -1,0 +1,27 @@
+module.exports = {
+  extends: [
+    "next/core-web-vitals",
+    "plugin:import/recommended",
+    "plugin:import/typescript",
+    "prettier",
+    "plugin:tailwindcss/recommended"
+  ],
+  plugins: ["tailwindcss"],
+  rules: {
+    "tailwindcss/no-custom-classname": "off",
+    "tailwindcss/classnames-order": "off"
+  },
+  settings: {
+    "import/resolver": {
+      node: {
+        extensions: [".js", ".jsx", ".ts", ".tsx"],
+        paths: ["."]
+      },
+      typescript: {
+        alwaysTryTypes: true,
+        project: "./tsconfig.json"
+      }
+    }
+  },
+  ignorePatterns: ["**/components/ui/**"]
+};
