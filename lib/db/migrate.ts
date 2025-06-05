@@ -1,32 +1,27 @@
-import { config } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 
-config({
-  path: '.env.local',
-});
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined');
+}
 
-const runMigrate = async () => {
-  if (!process.env.POSTGRES_URL) {
-    throw new Error('POSTGRES_URL is not defined');
-  }
+// Construct the connection string from Supabase URL
+const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+const connectionString = `postgres://postgres:${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}@${supabaseUrl.hostname}:5432/postgres`;
 
-  const connection = postgres(process.env.POSTGRES_URL, { max: 1 });
-  const db = drizzle(connection);
+const connection = postgres(connectionString, { max: 1 });
+const db = drizzle(connection);
 
-  console.log('⏳ Running migrations...');
-
-  const start = Date.now();
-  await migrate(db, { migrationsFolder: './lib/db/migrations' });
-  const end = Date.now();
-
-  console.log('✅ Migrations completed in', end - start, 'ms');
+async function main() {
+  console.log('Migration started');
+  await migrate(db, { migrationsFolder: 'lib/db/migrations' });
+  console.log('Migration completed');
   process.exit(0);
-};
+}
 
-runMigrate().catch((err) => {
-  console.error('❌ Migration failed');
+main().catch((err) => {
+  console.error('Migration failed');
   console.error(err);
   process.exit(1);
 });

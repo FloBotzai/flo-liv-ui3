@@ -43,6 +43,13 @@
       "when": 1741934630596,
       "tag": "0005_wooden_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1748958469226,
+      "tag": "0006_closed_lorna_dane",
+      "breakpoints": true
     }
   ]
 }
